@@ -81,7 +81,7 @@ int genesis(Node **nodes, Link *links, char* filename)
   int nodeA, nodeB;
   while(fscanf(inputFile, "%d-%d", &nodeA, &nodeB) == 2)
   {
-    //DEBUG: printf("NoeudA:%d  NoeudB:%d\n", nodeA, nodeB);
+    printf("NoeudA:%d  NoeudB:%d\n", nodeA, nodeB);
     *links = createLink(*links, &((*nodes)[nodeA]), &((*nodes)[nodeB])); //create a link between the 2 specified nodes.
   }
   
