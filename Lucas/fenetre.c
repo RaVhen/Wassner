@@ -4,7 +4,7 @@
 #include <math.h>
 #include <SFML/Graphics.h> 
 
-
+#define MASS 1
 
 typedef struct Node_{            // Node struct
   float posX, posY;
@@ -39,17 +39,18 @@ Link createLink(Link l, Node *nA, Node *nB){
     l->next = NULL;
   }
   else{
-    while(l->next != NULL)
+    Link tmp = l;
+    while(tmp->next != NULL)
     {
-      l = l->next;
+      tmp = tmp->next;
     }
     
     Link newLink = malloc(sizeof(Link_));
     if(!newLink){ //malloc error
         printf("Error while mallocing a new link !\n");
         exit(1);
-        }
-    l->next = newLink;
+    }
+    tmp->next = newLink;
     newLink->nodeA = nA;
     newLink->nodeB = nB;
     newLink->next = NULL;  
@@ -58,7 +59,7 @@ Link createLink(Link l, Node *nA, Node *nB){
 }
 
 
-int genesis(Node **nodes, Link *links, char* filename)
+int genesis(Node **nodes, Link *links, char* filename, int* nodeCt)
 {
   FILE * inputFile;
   inputFile = fopen(filename, "r");
@@ -67,16 +68,14 @@ int genesis(Node **nodes, Link *links, char* filename)
   if(inputFile==NULL)
     return(1); //error reading file !
   
-  int nodesCt;
-  
-  fscanf(inputFile, "%d", &nodesCt); //get nodes count
-  *nodes = malloc(sizeof(Node)*nodesCt); //create nodes array
-
+  fscanf(inputFile, "%d", nodeCt); //get nodes count
+  *nodes = malloc(sizeof(Node)*(*nodeCt)); //create nodes array
   
   int i;
-  for(i=0;i<nodesCt;i++){
-    (*nodes)[i].posX = 0.0;
-    }
+  for(i=0;i<*nodeCt;i++){
+    (*nodes)[i].posX = rand()%(640-20) + 10;
+    (*nodes)[i].posY = rand()%(480-20) + 10;
+  }
   
   int nodeA, nodeB;
   while(fscanf(inputFile, "%d-%d", &nodeA, &nodeB) == 2)
@@ -87,7 +86,6 @@ int genesis(Node **nodes, Link *links, char* filename)
   
   fclose(inputFile);
   return 0;
-  
 }
 
 
@@ -98,34 +96,63 @@ void simulation(float deltaT, float *x, float *y) {
   *y += deplacement;  
 }
 
-void affichage(sfRenderWindow *fenetre, float *x, float*y) {
+void affichage(sfRenderWindow *fenetre, Node *nodes, int nodeCt, Link links) {
   // préparation des couleurs
   sfColor noir = {0,0,0,0}, blanc = {255,255,255,255}, gris = {128,128,128,128};
-
-  // préparation du cercle
-  sfShape *cercle = sfShape_CreateCircle(*x,*y,10,blanc,1,gris);
+  
+  sfShape **cercles = malloc(sizeof(sfShape*)*nodeCt);
+  int i;
+  for(i=0;i<nodeCt;i++){//creer les cercles 
+    cercles[i] = sfShape_CreateCircle(nodes[i].posX, nodes[i].posY, 10, blanc, 1, gris);
+  }
+   
   // préparation de la ligne
-  sfShape *ligne = sfShape_CreateLine(*x,*y,0,0,1,blanc,1,gris);
+  int linkCt = 0;
+  Link tmp = links;
+  while(tmp){
+    linkCt++;
+    tmp = tmp->next;
+  }
+  printf("linkcT = %d\n",linkCt);
+  sfShape ** lignes = malloc(sizeof(sfShape*)*linkCt);
+  for(i=0;i<linkCt;i++){
+    lignes[i] = sfShape_CreateLine(links->nodeA->posX,links->nodeA->posY,links->nodeB->posX,links->nodeB->posY,1,blanc,1,gris); 
+    links = links->next;
+  }
 
   // préparation du texte à afficher
-  sfString *texte = sfString_Create();
+  
+  sfString **texte = malloc(sizeof(sfString*)*nodeCt);
   char s[10];
-  sprintf(s,"%d",12);
-  sfString_SetText(texte,s);
-  sfString_SetPosition(texte,*x +10, *y+10);
-
+  for(i=0;i<nodeCt;i++){
+    texte[i] = sfString_Create();
+    sprintf(s,"%d",i);
+    sfString_SetText(texte[i],s);
+    sfString_SetPosition(texte[i],nodes[i].posX +10, nodes[i].posY+10);
+  }
   sfRenderWindow_Clear(fenetre,noir);// effacer l'écran  
 
-  sfRenderWindow_DrawShape(fenetre,cercle);  // tracer le cercle
-  sfRenderWindow_DrawShape(fenetre,ligne);   // tracer la ligne
-  sfRenderWindow_DrawString(fenetre,texte);  // tracer le texte
-
+  //sfRenderWindow_DrawShape(fenetre,cercle);  // tracer le cercle
+  for(i=0;i<nodeCt;i++){//tracer les cercles
+    sfRenderWindow_DrawShape(fenetre,cercles[i]);
+  }
+  for(i=0;i<linkCt;i++){
+    sfRenderWindow_DrawShape(fenetre,lignes[i]);
+  }    // tracer la ligne
+  for(i=0;i<nodeCt;i++){//tracer les textes
+    sfRenderWindow_DrawString(fenetre,texte[i]);
+  } 
   sfRenderWindow_Display(fenetre); // visualiser le contenu de la fenetre    
 
   // faire le ménage en mémoire
-  sfShape_Destroy(cercle);
-  sfShape_Destroy(ligne);
-  sfString_Destroy(texte);
+
+  for(i=0;i<linkCt;i++)
+    sfShape_Destroy(lignes[i]);
+    
+  for(i=0;i<nodeCt;i++){
+    sfShape_Destroy(cercles[i]);
+    sfString_Destroy(texte[i]);
+  }
 }
 
 int main() {
@@ -147,20 +174,26 @@ int main() {
     
     Node *nodes = NULL;
     Link links = NULL;
-    
-    if (genesis(&nodes, &links, testFile)==1)
+    int nodeCt = 0;
+
+    if (genesis(&nodes, &links, testFile,&nodeCt)==1)
       printf("Error reading file !\n");
      
     if(!nodes) printf("EMPTYH!\n");
-    printf("Premier noeud: %.1f", nodes[1].posX);
+    printf("Node Count = %d\n",nodeCt);
+    int i = 0;
+    for(i = 0;i < nodeCt; i++){
+      
+      printf("Premier noeud: %.1f %.1f\n", nodes[i].posX, nodes[i].posY);
+    }
     
-    return(0);
+    
+    //return(0);
     
     
     
     // Boucle principale
     while (sfRenderWindow_IsOpened(fenetre)) {
-      //float a = sqrt(4);
       // gestion des evenements
       sfRenderWindow_GetEvent(fenetre, &evenement);
       if (evenement.Type == sfEvtClosed) { // sortie de boucle d'animation
@@ -169,7 +202,7 @@ int main() {
       // calcul de simulation
       simulation(deltaT,&x,&y); 
       // affichage
-      affichage(fenetre,&x,&y);
+      affichage(fenetre, nodes, nodeCt, links);
     }
     sfRenderWindow_Destroy(fenetre);    
     
