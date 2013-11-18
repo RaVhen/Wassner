@@ -6,8 +6,8 @@
 #include <SFML/Graphics.h> 
 
 #define MASS 1
-#define GRAVITY 50000
-#define SPRING 4
+#define GRAVITY 10000
+#define SPRING 1
 #define SPRINGSIZE 100
 
 typedef struct Node_{            // Node struct
@@ -137,25 +137,39 @@ void updateForces(Node *nodes, int nodeCt, Link links){
   while(curLink != NULL){   
     disX = curLink->nodeB->posX - curLink->nodeA->posX;
     disY = curLink->nodeB->posY - curLink->nodeA->posY;
-    //printf("disX %f          disY %f\n",disX,disY);
     dis = sqrt( (disX*disX) + (disY*disY) );
     deltaDis = SPRINGSIZE - distanceXY(curLink->nodeA->posX, curLink->nodeA->posY,curLink->nodeB->posX, curLink->nodeB->posY);
     
     float bigDis = distanceXY(curLink->nodeA->posX, curLink->nodeA->posY,curLink->nodeB->posX, curLink->nodeB->posY);
-    //printf("     %f     \n",bigDis - SPRINGSIZE);
-    deltaX = ((bigDis - SPRINGSIZE)*(disX))/2/bigDis;
-    deltaY = ((bigDis - SPRINGSIZE)*(disY))/2/bigDis;
-    //printf("%f       %f\n",deltaX,deltaY);
+    deltaX = ((bigDis - SPRINGSIZE)*(disX))/2*bigDis;
+    deltaY = ((bigDis - SPRINGSIZE)*(disY)) /2*bigDis;
     sign = 1; //sign of deltaDis : >0 ~> compressed spring 
     
-    curLink->nodeA->forX += SPRING * deltaX;
-    curLink->nodeB->forX -= SPRING * deltaX;
+    if (curLink->nodeA->posX > curLink->nodeB->posX){
+      //IF ---B----A--- => A-B > 0 => signs are OK
+      curLink->nodeA->forX += SPRING * deltaX;
+      curLink->nodeB->forX -= SPRING * deltaX;
+    }
+    else
+    {// --A-----B-- => B-A < 0 => signs must be inverted
+      curLink->nodeA->forX -= SPRING * deltaX;
+      curLink->nodeB->forX += SPRING * deltaX;
+    }
     
-    curLink->nodeA->forY += SPRING * deltaY;
-    curLink->nodeB->forY -= SPRING * deltaY;
+    if (curLink->nodeA->posY > curLink->nodeB->posY){
+      //IF ---B----A--- => B-A > 0 => signs are OK
+      curLink->nodeA->forY += SPRING * deltaY;
+      curLink->nodeB->forY -= SPRING * deltaY;
+    }
+    else
+    {// --A-----B-- => B-A < 0 => signs must be inverted
+      curLink->nodeA->forY -= SPRING * deltaY;
+      curLink->nodeB->forY += SPRING * deltaY;
+    }
     
     curLink = curLink->next;
-    }
+  }
+  
   
   //repulsive with neighbourhood
   for(current = 0; current < nodeCt-1; current++){
@@ -164,15 +178,9 @@ void updateForces(Node *nodes, int nodeCt, Link links){
       disY = nodes[current].posY - nodes[neighbour].posY;
       dis = (disX*disX) + (disY*disY);
       if(dis!=0){
-	if(sqrt(dis) < 1000000){
 	      resultX = GRAVITY*(MASS*MASS/(dis))*(abs(disX)/sqrt(dis));
 	      resultY = GRAVITY*(MASS*MASS/(dis))*(abs(disY)/sqrt(dis));
-	}
-	else{
-	  resultX = 0;
-	  resultY = 0;
-	}
-	      //   printf("DEBUG: updateForces current=%d\tneighbour=%d\tx=%f\ty=%f\n", current, neighbour, resultX, resultY);
+	      /*printf("DEBUG: updateForces current=%d\tneighbour=%d\tx=%f\ty=%f\n", current, neighbour, resultX, resultY);*/
       }
       
       if(disX<0){ //if current is at the left of neighbour
@@ -184,12 +192,12 @@ void updateForces(Node *nodes, int nodeCt, Link links){
 	      nodes[neighbour].forX -= resultX;
       }
       if(disY < 0){
-	      nodes[current].forY -= resultY;
-	      nodes[neighbour].forY += resultY;
-      }
-      if(disY > 0){
 	      nodes[current].forY += resultY;
 	      nodes[neighbour].forY -= resultY;
+      }
+      if(disY > 0){
+	      nodes[current].forY -= resultY;
+	      nodes[neighbour].forY += resultY;
       }
       printf("DEBUG: updateForces ~> [%d] X=%c%f Y=%c%f\n", current,(disX>0)?'+':'-' ,resultX,(disY>0)?'-':'+',resultY);
       // printf("DEBUG: updateForces ~> [%d] X=%f Y=%f\n", neighbour, nodes[neighbour].forX, nodes[neighbour].forY);
@@ -202,8 +210,6 @@ void updateVelocity(Node *nodes, int nodeCt){
   for(current = 0; current < nodeCt; current++){
     nodes[current].velX = nodes[current].forX / MASS;
     nodes[current].velY = nodes[current].forY / MASS;
-    nodes[current].velX *= 0.70;
-    nodes[current].velY *= 0.70;
   }
 }
 
@@ -212,10 +218,6 @@ void updateSpeed(Node *nodes, int nodeCt, float deltaT){
   for(current = 0; current < nodeCt; current++){
     nodes[current].speX += nodes[current].velX * deltaT;
     nodes[current].speY += nodes[current].velY * deltaT;
-    /*if(nodes[current].speX < 1)
-      nodes[current].speX = 0;
-    if(nodes[current].speY < 1)
-    nodes[current].speY = 0;*/
   }
 }
 
