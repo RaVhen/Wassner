@@ -13,6 +13,10 @@
 #define GRAVITY 5000
 #define SPRING 0.07
 #define SPRINGSIZE 40
+#define DEBUG_PRINTNODES 0
+#define DEBUG_SHOWCENTER 0
+#define DEBUG_SHOWSPEEDVECTORS 0
+#define DEBUG_SHOWVELOCITYVECTORS 0
 
 typedef struct Node_{						// Node struct
 	float posX, posY;
@@ -41,17 +45,20 @@ float distanceXY(float xa, float ya, float xb, float yb){
 
 
 void debugPrintNodes(Node *nodes, int nodeCt){
-	if(!nodes) printf("EMPTYH!\n");
-			printf("Node Count = %d\n",nodeCt);
-			int i = 0;
-			 
-			printf("Node \t\t X \t\t Y \t\t SpeX \t\t SpeY \t\t VelX \t\t VelY \t\t ForX \t\t ForY\n");
-			for(i = 0;i < nodeCt; i++){
+
+	if(DEBUG_PRINTNODES){
+		if(!nodes) printf("EMPTYH!\n");
+				printf("Node Count = %d\n",nodeCt);
+				int i = 0;
+				 
+				printf("Node \t\t X \t\t Y \t\t SpeX \t\t SpeY \t\t VelX \t\t VelY \t\t ForX \t\t ForY\n");
+				for(i = 0;i < nodeCt; i++){
 				
-				//printf("Node #%d: \t %.1f \t %.1f\n", i,nodes[i].posX, nodes[i].posY);
-				printf("%d: \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f\n", i,nodes[i].posX, nodes[i].posY, nodes[i].speX, nodes[i].speY, nodes[i].velX, nodes[i].velY, nodes[i].forX, nodes[i].forY);
-			}
-			printf("\n");
+					//printf("Node #%d: \t %.1f \t %.1f\n", i,nodes[i].posX, nodes[i].posY);
+					printf("%d: \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f\n", i,nodes[i].posX, nodes[i].posY, nodes[i].speX, nodes[i].speY, nodes[i].velX, nodes[i].velY, nodes[i].forX, nodes[i].forY);
+				}
+				printf("\n");
+	}
 }
 
 
@@ -138,21 +145,18 @@ void updateForces(Node *nodes, int nodeCt, Link links){
 	// LINK FORCES
 	
 	float deltaX, deltaY;
-	//float deltaDis;
-	//float sign;
+	
 	while(curLink != NULL){	 
 		disX = curLink->nodeB->posX - curLink->nodeA->posX;
 		disY = curLink->nodeB->posY - curLink->nodeA->posY;
-		//printf("disX:%f disY:%f\n",disX,disY);
+		
 		dis = sqrt( (disX*disX) + (disY*disY) );
-		//deltaDis = SPRINGSIZE - distanceXY(curLink->nodeA->posX, curLink->nodeA->posY,curLink->nodeB->posX, curLink->nodeB->posY);
+		
 		
 		float bigDis = distanceXY(curLink->nodeA->posX, curLink->nodeA->posY,curLink->nodeB->posX, curLink->nodeB->posY);
-		//printf(" %f \n",bigDis - SPRINGSIZE);
+		
 		deltaX = ((bigDis - SPRINGSIZE)*(disX))/2/bigDis;
 		deltaY = ((bigDis - SPRINGSIZE)*(disY))/2/bigDis;
-		//printf("%f %f\n",deltaX,deltaY);
-		//sign = 1; //sign of deltaDis : >0 ~> compressed spring 
 		
 		curLink->nodeA->forX += SPRING * deltaX;
 		curLink->nodeB->forX -= SPRING * deltaX;
@@ -178,7 +182,7 @@ void updateForces(Node *nodes, int nodeCt, Link links){
 		resultX = 0;
 		resultY = 0;
 	}
-				// printf("DEBUG: updateForces current=%d\tneighbour=%d\tx=%f\ty=%f\n", current, neighbour, resultX, resultY);
+				
 			}
 			
 			if(disX<0){ //if current is at the left of neighbour
@@ -197,8 +201,7 @@ void updateForces(Node *nodes, int nodeCt, Link links){
 				nodes[current].forY += resultY;
 				nodes[neighbour].forY -= resultY;
 			}
-			//printf("DEBUG: updateForces ~> [%d] X=%c%f Y=%c%f\n", current,(disX>0)?'+':'-' ,resultX,(disY>0)?'-':'+',resultY);
-			// printf("DEBUG: updateForces ~> [%d] X=%f Y=%f\n", neighbour, nodes[neighbour].forX, nodes[neighbour].forY);
+			
 		}
 	}
 }
@@ -272,7 +275,7 @@ void correctPosition(Node *nodes, int nodeCt){
 		nodes[i].posX+=deltaX/2;
 		nodes[i].posY+=deltaY/2;
 	}
-	//printf("DEBUG DELTA CENTER: X:%lf   Y:%lf", deltaX, deltaY);
+	
 	
 	
 	
@@ -287,7 +290,7 @@ void avoidOverGap(Node *nodes, int nodeCt){
 	
 	for(i=0; i<nodeCt ; i++){	
 	
-		if(nodes[i].posX < 500)
+		if(nodes[i].posX < -500)
 			overgap++;
 			
 		if(nodes[i].posX > WINDOW_WIDTH+500)
@@ -333,6 +336,7 @@ void simulation(Node *nodes, int nodeCt, float deltaT, Link links) {
 void affichage(sfRenderWindow *fenetre, Node *nodes, int nodeCt, Link links) {
 	// préparation des couleurs
 	sfColor noir = {0,0,0,0}, blanc = {255,255,255,255}, gris = {128,128,128,128};
+	sfColor rouge = {255,0,0,255}, vert = {0,255,0,255};
 
 	sfShape **cercles = malloc(sizeof(sfShape*)*nodeCt);
 	int i;
@@ -347,8 +351,7 @@ void affichage(sfRenderWindow *fenetre, Node *nodes, int nodeCt, Link links) {
 		linkCt++;
 		tmp = tmp->next;
 	}
-	//Debug to print links number
-	//printf("linkcT = %d\n",linkCt);
+
 	sfShape ** lignes = malloc(sizeof(sfShape*)*linkCt);
 	for(i=0;i<linkCt;i++){
 		lignes[i] = sfShape_CreateLine(links->nodeA->posX,links->nodeA->posY,links->nodeB->posX,links->nodeB->posY,1,blanc,1,gris); 
@@ -365,120 +368,97 @@ void affichage(sfRenderWindow *fenetre, Node *nodes, int nodeCt, Link links) {
 		sfString_SetPosition(texte[i],nodes[i].posX +10, nodes[i].posY+10);
 	}
 	
-	/* DEBUG : DRAW VECTORS */
-	sfColor rouge = {255,0,0,255}, vert = {0,255,0,255};
-
-	sfShape ** accelerations = malloc(sizeof(sfShape*)*nodeCt);
-	sfShape ** vitesses =  malloc(sizeof(sfShape*)*nodeCt);
+	//DEBUG VARIABLES :
+	sfShape *centre;
+	sfShape *circleXmax;
+	sfShape *circleXmin;
+	sfShape *circleYmax;
+	sfShape *circleYmin;
+	sfShape **vitesses;
+	sfShape **accelerations;
 	
-	for(i=0;i<nodeCt;i++){
-		accelerations[i] = sfShape_CreateLine(nodes[i].posX, nodes[i].posY, nodes[i].posX + nodes[i].velX *10, nodes[i].posY + nodes[i].velY *10,1,rouge,1,gris); //accelerations
-		
-		
-		vitesses[i] = sfShape_CreateLine(nodes[i].posX, nodes[i].posY, nodes[i].posX + nodes[i].speX , nodes[i].posY + nodes[i].speY ,1,vert,1,gris); //vitesses
-		
-		
+	if(DEBUG_SHOWSPEEDVECTORS){	
+		vitesses =  malloc(sizeof(sfShape*)*nodeCt);
+		for(i=0;i<nodeCt;i++)
+			vitesses[i] = sfShape_CreateLine(nodes[i].posX, nodes[i].posY, nodes[i].posX + nodes[i].speX , nodes[i].posY + nodes[i].speY ,1,vert,1,gris); //vitesses
 	}
 	
-	/* TEST FEATURE : gravity center */
-	/*
-	float gravityX, gravityY, surface;
-	gravityX = 0; gravityY=0;
-	surface=0;
+	if(DEBUG_SHOWVELOCITYVECTORS){
+		accelerations = malloc(sizeof(sfShape*)*nodeCt);
+		for(i=0;i<nodeCt;i++)
+			accelerations[i] = sfShape_CreateLine(nodes[i].posX, nodes[i].posY, nodes[i].posX + nodes[i].velX *10, nodes[i].posY + nodes[i].velY *10,1,rouge,1,gris); //accelerations
+	}		
 	
-	for(i=0;i<nodeCt-1;i++){
-		surface += (nodes[i].posX * nodes[i+1].posY) - (nodes[i+1].posX * nodes[i].posY);
-		gravityX+= (nodes[i].posX + nodes[i+1].posX) * (nodes[i].posX * nodes[i+1].posY - nodes[i+1].posX * nodes[i].posY);
-		gravityY+= (nodes[i].posY + nodes[i+1].posY) * (nodes[i].posX * nodes[i+1].posY - nodes[i+1].posX * nodes[i].posY);
-	}
-	//last iterations are looping with first element
-	surface += (nodes[i].posX * nodes[0].posY) - (nodes[0].posX * nodes[i].posY);
-	gravityX+= (nodes[i].posX + nodes[0].posX) * (nodes[i].posX * nodes[0].posY - nodes[0].posX * nodes[i].posY);
-	gravityY+= (nodes[i].posY + nodes[0].posY) * (nodes[i].posX * nodes[0].posY - nodes[0].posX * nodes[i].posY);
-	
-	surface*= 0.5; //finish surface formula
-	//finish formulas
-	gravityX *= 1/(6*surface);
-	gravityY *= 1/(6*surface);
-	
-	
-	sfShape *barycentre = malloc(sizeof(sfShape*));
-
-	barycentre = sfShape_CreateCircle(gravityX, gravityY, 5, rouge, 1, gris);
-	*/
-	
-	//TEST FEATURE : CENTER
-	float xMin, xMax, yMin, yMax;
-	int nodeXmin, nodeXmax, nodeYmin, nodeYmax;
-	xMin=10000;
-	yMin=10000;
-	xMax=0;
-	yMax=0;
-	
-	/*
-	xMin = (nodes[0].posX < nodes[1].posX) ? nodes[0].posX : nodes[1].posX;
-	nodeXmin = (nodes[0].posX < nodes[1].posX) ? 0:1;
-	
-	xMax = (nodes[0].posX >= nodes[1].posX) ? nodes[0].posX : nodes[1].posX;
-	nodeXmax = (nodes[0].posX >= nodes[1].posX) ? 0:1;
-	
-	yMin = (nodes[0].posY < nodes[1].posY) ? nodes[0].posY : nodes[1].posY;
-	yMax = (nodes[0].posY >= nodes[1].posY) ? nodes[0].posY : nodes[1].posY;
-	
-	nodeYmin = (nodes[0].posY < nodes[1].posY) ? 0:1;
-	nodeYmax = (nodes[0].posY >= nodes[1].posY) ? 0:1;
-	*/
-	
-	
-	for(i=0; i<nodeCt ; i++){	
-	
-		if(nodes[i].posX < xMin){
-			xMin = nodes[i].posX;
-			nodeXmin=i;
-		}
+	if(DEBUG_SHOWCENTER){
+		float xMin, xMax, yMin, yMax;
+		int nodeXmin, nodeXmax, nodeYmin, nodeYmax;
 		
-		if(nodes[i].posX > xMax){
-			xMax = nodes[i].posX;
-			nodeXmax=i;
-		}
+		xMin = (nodes[0].posX < nodes[1].posX) ? nodes[0].posX : nodes[1].posX;
+		nodeXmin = (nodes[0].posX < nodes[1].posX) ? 0:1;
+	
+		xMax = (nodes[0].posX >= nodes[1].posX) ? nodes[0].posX : nodes[1].posX;
+		nodeXmax = (nodes[0].posX >= nodes[1].posX) ? 0:1;
+	
+		yMin = (nodes[0].posY < nodes[1].posY) ? nodes[0].posY : nodes[1].posY;
+		yMax = (nodes[0].posY >= nodes[1].posY) ? nodes[0].posY : nodes[1].posY;
+	
+		nodeYmin = (nodes[0].posY < nodes[1].posY) ? 0:1;
+		nodeYmax = (nodes[0].posY >= nodes[1].posY) ? 0:1;
+	
+	
+	
+		for(i=0; i<nodeCt ; i++){	
+	
+			if(nodes[i].posX < xMin){
+				xMin = nodes[i].posX;
+				nodeXmin=i;
+			}
+		
+			if(nodes[i].posX > xMax){
+				xMax = nodes[i].posX;
+				nodeXmax=i;
+			}
 			
-		if(nodes[i].posY < yMin){
-			yMin = nodes[i].posY;
-			nodeYmin=i;
-		}
+			if(nodes[i].posY < yMin){
+				yMin = nodes[i].posY;
+				nodeYmin=i;
+			}
 			
-		if(nodes[i].posY > yMax){
-			yMax = nodes[i].posY;
-			nodeYmax=i;
+			if(nodes[i].posY > yMax){
+				yMax = nodes[i].posY;
+				nodeYmax=i;
+			}
 		}
+	
+		circleXmax = malloc(sizeof(sfShape*));
+		circleXmin = malloc(sizeof(sfShape*));
+		circleYmax = malloc(sizeof(sfShape*));
+		circleYmin = malloc(sizeof(sfShape*));
+	
+		circleXmin = sfShape_CreateCircle(nodes[nodeXmin].posX, nodes[nodeXmin].posY, 15, rouge, 1, gris);
+		circleXmax = sfShape_CreateCircle(nodes[nodeXmax].posX, nodes[nodeXmax].posY, 15, rouge, 1, gris);
+		circleYmin = sfShape_CreateCircle(nodes[nodeYmin].posX, nodes[nodeYmin].posY, 15, vert, 1, gris);
+		circleYmax = sfShape_CreateCircle(nodes[nodeYmax].posX, nodes[nodeYmax].posY, 15, vert, 1, gris);
+	
+		centre = malloc(sizeof(sfShape*));
+		centre = sfShape_CreateCircle((xMax-xMin)/2 + xMin, (yMax-yMin)/2 + yMin, 5, rouge, 1, gris);
+		/*printf("DEBUG: CENTRE Xmin:%lf, Xmax:%lf  Ymin:%lf Ymax:%lf\n", xMin, xMax, yMin, yMax);
+		printf("DEBUG: CENTRE X:%lf  Y:%lf\n", (xMax-xMin)/2, (yMax-yMin)/2);*/
 	}
-	
-	sfShape *circleXmax = malloc(sizeof(sfShape*));
-	sfShape *circleXmin = malloc(sizeof(sfShape*));
-	sfShape *circleYmax = malloc(sizeof(sfShape*));
-	sfShape *circleYmin = malloc(sizeof(sfShape*));
-	
-	circleXmin = sfShape_CreateCircle(nodes[nodeXmin].posX, nodes[nodeXmin].posY, 15, rouge, 1, gris);
-	circleXmax = sfShape_CreateCircle(nodes[nodeXmax].posX, nodes[nodeXmax].posY, 15, rouge, 1, gris);
-	circleYmin = sfShape_CreateCircle(nodes[nodeYmin].posX, nodes[nodeYmin].posY, 15, vert, 1, gris);
-	circleYmax = sfShape_CreateCircle(nodes[nodeYmax].posX, nodes[nodeYmax].posY, 15, vert, 1, gris);
-		
-	sfShape *centre = malloc(sizeof(sfShape*));
-	centre = sfShape_CreateCircle((xMax-xMin)/2 + xMin, (yMax-yMin)/2 + yMin, 5, rouge, 1, gris);
-	/*printf("DEBUG: CENTRE Xmin:%lf, Xmax:%lf  Ymin:%lf Ymax:%lf\n", xMin, xMax, yMin, yMax);
-	printf("DEBUG: CENTRE X:%lf  Y:%lf\n", (xMax-xMin)/2, (yMax-yMin)/2);*/
 	
 	sfRenderWindow_Clear(fenetre,noir);// effacer l'écran 
 	
-	//TEST FEATURE BARYCENTRE:
-	//	sfRenderWindow_DrawShape(fenetre,barycentre);
+	if(DEBUG_SHOWCENTER){
+
 		sfRenderWindow_DrawShape(fenetre, centre);
 		
 		sfRenderWindow_DrawShape(fenetre, circleXmin);
 		sfRenderWindow_DrawShape(fenetre, circleXmax);
 		sfRenderWindow_DrawShape(fenetre, circleYmin);
 		sfRenderWindow_DrawShape(fenetre, circleYmax);
-
+	}	
+	
+	
 	for(i=0;i<nodeCt;i++){//tracer les cercles
 		sfRenderWindow_DrawShape(fenetre,cercles[i]);
 		sfRenderWindow_DrawString(fenetre,texte[i]);
@@ -487,11 +467,16 @@ void affichage(sfRenderWindow *fenetre, Node *nodes, int nodeCt, Link links) {
 		sfRenderWindow_DrawShape(fenetre,lignes[i]);
 	
 	
-	//DEBUG-VECTORS
-	for(i=0;i<nodeCt;i++){ // Tracer les vecteurs vitesse/acceleration
-		//sfRenderWindow_DrawShape(fenetre,vitesses[i]);
+	if(DEBUG_SHOWSPEEDVECTORS){
+		for(i=0;i<nodeCt;i++)
+		sfRenderWindow_DrawShape(fenetre,vitesses[i]);
+	}
+	
+	if(DEBUG_SHOWVELOCITYVECTORS){
+		for(i=0;i<nodeCt;i++)
 		sfRenderWindow_DrawShape(fenetre,accelerations[i]);
 	}
+	
 	
 	
 	sfRenderWindow_Display(fenetre); // visualiser le contenu de la fenetre
@@ -509,13 +494,26 @@ void affichage(sfRenderWindow *fenetre, Node *nodes, int nodeCt, Link links) {
 	free(cercles);
 	free(texte);
 	
-	//VECTOR DEBUG
-	for(i=0;i<nodeCt;i++){
-		sfShape_Destroy(accelerations[i]);
-		sfShape_Destroy(vitesses[i]);
+	if(DEBUG_SHOWCENTER){
+		sfShape_Destroy(centre);
+		sfShape_Destroy(circleXmin);
+		sfShape_Destroy(circleXmax);
+		sfShape_Destroy(circleYmin);
+		sfShape_Destroy(circleYmax);
 	}
-	free(accelerations);
-	free(vitesses);
+	
+	if(DEBUG_SHOWSPEEDVECTORS){
+		for(i=0;i<nodeCt;i++)
+			sfShape_Destroy(vitesses[i]);
+		free(vitesses);
+	}
+	
+	if(DEBUG_SHOWVELOCITYVECTORS){
+		for(i=0;i<nodeCt;i++)
+			sfShape_Destroy(accelerations[i]);
+		free(accelerations);	
+	}
+	
 }
 
 
@@ -577,8 +575,6 @@ int main(int argc, char **argv) {
 			debugPrintNodes(nodes, nodeCt);
 		}
 		sfRenderWindow_Destroy(fenetre);
-		
-		
 		
 		
 		
