@@ -10,12 +10,12 @@
 #define WINDOW_HEIGHT 480
 
 #define MASS 1
-#define GRAVITY 5000
-#define SPRING 0.07
-#define SPRINGSIZE 40
+#define GRAVITY 60000
+#define SPRING 0.5
+#define SPRINGSIZE 70
 #define DEBUG_PRINTNODES 0
-#define DEBUG_SHOWCENTER 1
-#define DEBUG_SHOWSPEEDVECTORS 0
+#define DEBUG_SHOWCENTER 0
+#define DEBUG_SHOWSPEEDVECTORS 1
 #define DEBUG_SHOWVELOCITYVECTORS 1
 
 typedef struct Node_{						// Node struct
@@ -174,14 +174,14 @@ void updateForces(Node *nodes, int nodeCt, Link links){
 			disY = nodes[current].posY - nodes[neighbour].posY;
 			dis = (disX*disX) + (disY*disY);
 			if(dis!=0){
-	if(sqrt(dis) < 1000000){
+	//if(sqrt(dis) < 1000000){
 				resultX = GRAVITY*(MASS*MASS/(dis))*(abs(disX)/sqrt(dis));
 				resultY = GRAVITY*(MASS*MASS/(dis))*(abs(disY)/sqrt(dis));
-	}
-	else{
-		resultX = 0;
-		resultY = 0;
-	}
+	//}
+	//else{
+	//	resultX = 0;
+	//	resultY = 0;
+	//}
 				
 			}
 			
@@ -206,17 +206,28 @@ void updateForces(Node *nodes, int nodeCt, Link links){
 	}
 }
 
-void updateVelocity(Node *nodes, int nodeCt, float percentage){
+void updateVelocity(Node *nodes, int nodeCt, float percentage, float highCut){
 	int current;
 	for(current = 0; current < nodeCt; current++){
-		nodes[current].velX = nodes[current].forX / MASS;
-		nodes[current].velY = nodes[current].forY / MASS;
-		nodes[current].velX *= percentage;
-		nodes[current].velY *= percentage;
+		
+		nodes[current].velX = percentage * nodes[current].forX / MASS;
+		nodes[current].velY = percentage * nodes[current].forY / MASS;
+		
+		if(highCut>0){
+			if(nodes[current].velX > highCut)
+				nodes[current].velX = highCut;
+			if(nodes[current].velX < - highCut)
+				nodes[current].velX = - highCut;
+				
+			if(nodes[current].velY > highCut)
+				nodes[current].velY = highCut;
+			if(nodes[current].velY < - highCut)
+				nodes[current].velY = - highCut;
+		}
 	}
 }
 
-void updateSpeed(Node *nodes, int nodeCt, float deltaT, float percentage, float lowCut){
+void updateSpeed(Node *nodes, int nodeCt, float deltaT, float percentage, float lowCut, float highCut){
 	int current;
 	for(current = 0; current < nodeCt; current++){
 		nodes[current].speX += nodes[current].velX * deltaT * percentage;
@@ -226,6 +237,19 @@ void updateSpeed(Node *nodes, int nodeCt, float deltaT, float percentage, float 
 			nodes[current].speX = 0;
 		if(nodes[current].velY > -lowCut && nodes[current].velY > -lowCut)
 			nodes[current].speY = 0;
+			
+		if(highCut>0){
+			if( nodes[current].speX > highCut)
+				nodes[current].speX = highCut;
+			if(nodes[current].speX < - highCut)
+				nodes[current].speX = - highCut;
+			
+			if(nodes[current].speY > highCut)
+				nodes[current].speY = highCut;
+			if(nodes[current].speY < - highCut)
+				nodes[current].speY = - highCut;
+				
+		}
 	}
 }
 
@@ -317,21 +341,6 @@ void avoidOverGap(Node *nodes, int nodeCt){
 
 }
 
-void simulation(Node *nodes, int nodeCt, float deltaT, Link links) {
-	/*float vitesse = 10; // unité : pixel/secondes
-	
-	float deplacement = deltaT*vitesse; 
-	*x += deplacement;
-	*y += deplacement;	
-	*/
-	updateForces(nodes, nodeCt, links);
-	updateVelocity(nodes, nodeCt, 0.7); //
-	updateSpeed(nodes, nodeCt, deltaT,100.0, 0.0); //lowcut=0 for no lowcut
-	updatePosition(nodes, nodeCt, deltaT);
-	correctPosition(nodes, nodeCt);
-	avoidOverGap(nodes, nodeCt);
-
-}
 
 void affichage(sfRenderWindow *fenetre, Node *nodes, int nodeCt, Link links) {
 	// préparation des couleurs
@@ -516,6 +525,23 @@ void affichage(sfRenderWindow *fenetre, Node *nodes, int nodeCt, Link links) {
 	
 }
 
+
+
+void simulation(Node *nodes, int nodeCt, float deltaT, Link links) {
+	/*float vitesse = 10; // unité : pixel/secondes
+	
+	float deplacement = deltaT*vitesse; 
+	*x += deplacement;
+	*y += deplacement;	
+	*/
+	updateForces(nodes, nodeCt, links);
+	updateVelocity(nodes, nodeCt, 1 , -1); //
+	updateSpeed(nodes, nodeCt, deltaT, 100.0, 0.0, 100); //lowcut=0 for no lowcut
+	updatePosition(nodes, nodeCt, deltaT);
+	correctPosition(nodes, nodeCt);
+	avoidOverGap(nodes, nodeCt);
+
+}
 
 
 
